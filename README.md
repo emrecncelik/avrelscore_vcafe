@@ -43,7 +43,7 @@ Unzip and put the files at
 ```
 
 ### Babble Noise Download
-For audio corruption modeling, download babble noise file from [here](https://kaistackr-my.sharepoint.com/:u:/g/personal/ms_k_kaist_ac_kr/EbMad_UoWI5MiJH-EVHoA8YBzd0wMM4C_RnELPbMlmyTTg?e=lbnfdE). 
+For audio corruption modeling, download babble noise file from [here](https://drive.google.com/file/d/15CSWCYz12CIsgFeDT139CiCc545jhbyK/view?usp=sharing). 
 
 put the file at
 ```
@@ -223,10 +223,10 @@ We release the pre-trained AVSR models (VCAFE and AVRelScore) on LRS2 and LRS3 d
 
 | Model |       Dataset       |   WER   |
 |:-------------------:|:-------------------:|:--------:|
-|VCAFE|LRS2 |   [4.459](https://kaistackr-my.sharepoint.com/:u:/g/personal/ms_k_kaist_ac_kr/EUU96MS_vEtLvvBsIfTPiu8B72AUDqHE855b5o-sc3imaQ?e=0RMvAy)  |
-|VCAFE|LRS3 |   [2.821](https://kaistackr-my.sharepoint.com/:u:/g/personal/ms_k_kaist_ac_kr/Ef_kW5KR4qhFoPB2De2WdpMBWZDq40GxNwUWqb_o7xIV8Q?e=QHvQOQ)  |
-|AVRelScore|LRS2 |   [4.129](https://kaistackr-my.sharepoint.com/:u:/g/personal/ms_k_kaist_ac_kr/EfNfnFcbIU1FjkTM5aoIF0MBBXv2qYD3pF4G1VHbor2kHw?e=FxIxPC)  |
-|AVRelScore|LRS3 |   [2.770](https://kaistackr-my.sharepoint.com/:u:/g/personal/ms_k_kaist_ac_kr/Edm9bMf7IchHr39jBcLF_6EB3H4WpoLyrS3lHaGRQaJKXA?e=da4cxS)  |
+|VCAFE|LRS2 |   [4.459](https://drive.google.com/file/d/1509xCvaMgMwtfJxE04zPgWRgiYgy3fFD/view?usp=sharing)  |
+|VCAFE|LRS3 |   [2.821](https://drive.google.com/file/d/1539Td4FaBCta-1KOCKEz1QovAlzx-DkO/view?usp=sharing)  |
+|AVRelScore|LRS2 |   [4.129](https://drive.google.com/file/d/157fsllT8pldpuCFtVTRYUNd1yK5AoE-b/view?usp=sharing)  |
+|AVRelScore|LRS3 |   [2.770](https://drive.google.com/file/d/159gCUDJAKDIYchS5iNXQ1M5pHnPGIIDd/view?usp=sharing)  |
 
 You can find the pre-trained Language Model in the following [repository](https://github.com/mpc001/Visual_Speech_Recognition_for_Multiple_Languages#Model-Zoo).
 Put the language model at
