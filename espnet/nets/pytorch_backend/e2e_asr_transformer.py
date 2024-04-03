@@ -231,7 +231,7 @@ class E2E(torch.nn.Module):
         :param int odim: dimension of outputs
         :param Namespace args: argument Namespace containing options
         """
-        assert architecture in ['Conformer', 'VCAFE', 'AVRelScore']
+        assert architecture in ['Conformer', 'VCAFE', 'AVRelScore', 'Audio', 'Video']
         torch.nn.Module.__init__(self)
         if args.transformer_attn_dropout_rate is None:
             args.transformer_attn_dropout_rate = args.dropout_rate
@@ -320,6 +320,43 @@ class E2E(torch.nn.Module):
 
             self.fusion_module = Fusion_module(args.adim)
 
+        elif architecture == 'Audio':
+            self.encoder = Encoder(idim=idim,
+                        attention_dim=args.adim,
+                        attention_heads=args.aheads,
+                        linear_units=args.eunits,
+                        num_blocks=args.elayers,
+                        input_layer='conv1d',
+                        dropout_rate=args.dropout_rate,
+                        positional_dropout_rate=args.dropout_rate,
+                        attention_dropout_rate=args.transformer_attn_dropout_rate,
+                        encoder_attn_layer_type=args.transformer_encoder_attn_layer_type,
+                        macaron_style=args.macaron_style,
+                        use_cnn_module=args.use_cnn_module,
+                        cnn_module_kernel=args.cnn_module_kernel,
+                        zero_triu=getattr(args, "zero_triu", False),
+                        a_upsample_ratio=args.a_upsample_ratio,
+                        relu_type=getattr(args, "relu_type", "swish"),
+                    )
+        elif architecture == 'Video':
+            self.encoder = Encoder(idim=idim,
+                        attention_dim=args.adim,
+                        attention_heads=args.aheads,
+                        linear_units=args.eunits,
+                        num_blocks=args.elayers,
+                        input_layer=args.transformer_input_layer,
+                        dropout_rate=args.dropout_rate,
+                        positional_dropout_rate=args.dropout_rate,
+                        attention_dropout_rate=args.transformer_attn_dropout_rate,
+                        encoder_attn_layer_type=args.transformer_encoder_attn_layer_type,
+                        macaron_style=args.macaron_style,
+                        use_cnn_module=args.use_cnn_module,
+                        cnn_module_kernel=args.cnn_module_kernel,
+                        zero_triu=getattr(args, "zero_triu", False),
+                        a_upsample_ratio=args.a_upsample_ratio,
+                        relu_type=getattr(args, "relu_type", "swish"),
+                    )
+
         self.transformer_input_layer = args.transformer_input_layer
         self.a_upsample_ratio = args.a_upsample_ratio
 
@@ -398,6 +435,10 @@ class E2E(torch.nn.Module):
             hs_pad, hs_mask = self.encoder_vid(xs_pad, src_mask)
             hs_pad_aud, _ = self.encoder_aud(xs_aud_pad, src_mask)
             hs_pad = self.fusion_module(torch.cat((hs_pad, hs_pad_aud), dim=-1))
+        elif self.architecture == 'Audio':
+            hs_pad, hs_mask = self.encoder(xs_aud_pad, src_mask_aud)
+        elif self.architecture == 'Video':
+            hs_pad, hs_mask = self.encoder(xs_pad, src_mask)
 
         # 2. forward decoder
         if self.decoder is not None:
@@ -486,6 +527,11 @@ class E2E(torch.nn.Module):
             hs_pad, hs_mask = self.encoder_vid(xs_pad, src_mask)
             hs_pad_aud, _ = self.encoder_aud(xs_aud_pad, src_mask)
             hs_pad = self.fusion_module(torch.cat((hs_pad, hs_pad_aud), dim=-1))
+        elif self.architecture == 'Audio':
+            hs_pad, hs_mask = self.encoder(xs_aud_pad, src_mask_aud)
+        elif self.architecture == 'Video':
+            hs_pad, hs_mask = self.encoder(xs_pad, src_mask)
+
 
         # 2. forward decoder
         if self.decoder is not None:
@@ -530,8 +576,12 @@ class E2E(torch.nn.Module):
         else:
             if self.architecture in ['VCAFE', 'AVRelScore']:
                 enc_output, _ = self.encoders(x, None, torch.tensor([x.size(1)]), x_a, None)
-            else:
+            elif self.architecture == 'Conformer':
                 feat_vid, _ = self.encoder_vid(x, None)
                 feat_aud, _ = self.encoder_aud(x_a, None)
                 enc_output = self.fusion_module(torch.cat((feat_vid, feat_aud), dim=-1))
+            elif self.architecture == 'Audio':
+                enc_output, _ = self.encoder(x_a, None)
+            elif self.architecture == 'Video':
+                enc_output, _ = self.encoder(x, None)
             return enc_output.squeeze(0)
