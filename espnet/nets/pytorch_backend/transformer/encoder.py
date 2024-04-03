@@ -577,7 +577,7 @@ class Encoder(torch.nn.Module):
         """
         if isinstance(self.frontend, (Conv1dResNet, Conv3dResNet)):
             xs = self.frontend(xs)
-        if isinstance(self.frontend, Conv1dResNet):
+        if isinstance(self.frontend, Conv1dResNet) and masks is not None:
             xs = xs[:, :masks.size(2)]
             if xs.size(1) < masks.size(2):
                 xs = torch.cat([xs, torch.zeros_like(xs)[:, :masks.size(2) - xs.size(1)]], 1)
