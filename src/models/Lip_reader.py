@@ -7,10 +7,13 @@ from espnet.nets.batch_beam_search import BatchBeamSearch
 from espnet.asr.asr_utils import add_results_to_json
 import numpy as np
 
+
 class Lipreading(torch.nn.Module):
     """Lipreading."""
 
-    def __init__(self, config, odim, model, char_list, feats_position="resnet"):
+    def __init__(
+        self, config, odim, model, char_list, feats_position="resnet", device=None
+    ):
         """__init__.
 
         :param config: ConfigParser class, contains model's configuration.
@@ -23,9 +26,15 @@ class Lipreading(torch.nn.Module):
         self.odim = odim
         self.model = model
         self.char_list = char_list
+        self.device = (
+            device
+            if device is not None
+            else torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        )
         self.get_beam_search(config)
 
-        self.beam_search.cuda().eval()
+        if self.device.type == "cuda":
+            self.beam_search.cuda().eval()
 
     def get_beam_search(self, config):
         """get_beam_search.
@@ -43,7 +52,9 @@ class Lipreading(torch.nn.Module):
         lm_weight = config.lm_weight
         beam_size = config.beam_size
 
-        print(f'Beam search with ctc_weight: {ctc_weight}, lm_weight: {lm_weight}, beam_size: {beam_size}')
+        print(
+            f"Beam search with ctc_weight: {ctc_weight}, lm_weight: {lm_weight}, beam_size: {beam_size}"
+        )
 
         sos = self.odim - 1
         eos = self.odim - 1
@@ -91,29 +102,33 @@ class Lipreading(torch.nn.Module):
             pre_beam_score_key=None if self.ctc_weight == 1.0 else "decoder",
         )
 
-    def predict(self, sequence, sequence_aud, search='beam'):
+    def predict(self, sequence, sequence_aud, search="beam"):
         """predict.
 
         :param sequence: ndarray, the raw sequence saved in a format of numpy array.
         """
         with torch.no_grad():
             if isinstance(sequence, np.ndarray):
-                sequence = (torch.FloatTensor(sequence).cuda())
-                sequence_aud = (torch.FloatTensor(sequence_aud).cuda())
+                sequence = torch.FloatTensor(sequence)
+                sequence_aud = torch.FloatTensor(sequence_aud)
+
+                if self.device.type == "cuda":
+                    sequence = sequence.cuda()
+                    sequence_aud = sequence_aud.cuda()
 
             if hasattr(self.model, "module"):
                 enc_feats = self.model.module.encode(sequence, sequence_aud)
             else:
                 enc_feats = self.model.encode(sequence, sequence_aud)
 
-            if search=='beam':
+            if search == "beam":
                 nbest_hyps = self.beam_search(
                     x=enc_feats,
                     maxlenratio=self.maxlenratio,
-                    minlenratio=self.minlenratio
-                    )
+                    minlenratio=self.minlenratio,
+                )
                 nbest_hyps = [
-                    h.asdict() for h in nbest_hyps[:min(len(nbest_hyps), self.nbest)]
+                    h.asdict() for h in nbest_hyps[: min(len(nbest_hyps), self.nbest)]
                 ]
 
                 transcription = add_results_to_json(nbest_hyps, self.char_list)
