@@ -530,7 +530,7 @@ def _restore_snapshot(model, snapshot, load_fn=None):
         load_fn = chainer.serializers.load_npz
 
     load_fn(snapshot, model)
-    logging.info("restored from " + str(snapshot))
+    logging.debug("restored from " + str(snapshot))
 
 
 def adadelta_eps_decay(eps_decay):
@@ -558,12 +558,12 @@ def _adadelta_eps_decay(trainer, eps_decay):
     if hasattr(optimizer, "eps"):
         current_eps = optimizer.eps
         setattr(optimizer, "eps", current_eps * eps_decay)
-        logging.info("adadelta eps decayed to " + str(optimizer.eps))
+        logging.debug("adadelta eps decayed to " + str(optimizer.eps))
     # pytorch
     else:
         for p in optimizer.param_groups:
             p["eps"] *= eps_decay
-            logging.info("adadelta eps decayed to " + str(p["eps"]))
+            logging.debug("adadelta eps decayed to " + str(p["eps"]))
 
 
 def adam_lr_decay(eps_decay):
@@ -591,12 +591,12 @@ def _adam_lr_decay(trainer, eps_decay):
     if hasattr(optimizer, "lr"):
         current_lr = optimizer.lr
         setattr(optimizer, "lr", current_lr * eps_decay)
-        logging.info("adam lr decayed to " + str(optimizer.lr))
+        logging.debug("adam lr decayed to " + str(optimizer.lr))
     # pytorch
     else:
         for p in optimizer.param_groups:
             p["lr"] *= eps_decay
-            logging.info("adam lr decayed to " + str(p["lr"]))
+            logging.debug("adam lr decayed to " + str(p["lr"]))
 
 
 def torch_snapshot(savefun=torch.save, filename="snapshot.ep.{.updater.epoch}"):
@@ -691,7 +691,7 @@ def get_model_conf(model_path, conf_path=None):
     else:
         model_conf = conf_path
     with open(model_conf, "rb") as f:
-        logging.info("reading a config file from " + model_conf)
+        logging.debug("reading a config file from " + model_conf)
         confs = json.load(f)
     if isinstance(confs, dict):
         # for lm

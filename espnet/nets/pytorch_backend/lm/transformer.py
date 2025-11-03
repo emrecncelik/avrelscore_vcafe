@@ -123,10 +123,10 @@ class TransformerLM(nn.Module, LMInterface, BatchScorerInterface):
         )
         self.decoder = nn.Linear(args.att_unit, n_vocab)
 
-        logging.info("Tie weights set to {}".format(tie_weights))
-        logging.info("Dropout set to {}".format(args.dropout_rate))
-        logging.info("Emb Dropout set to {}".format(emb_dropout_rate))
-        logging.info("Att Dropout set to {}".format(att_dropout_rate))
+        logging.debug("Tie weights set to {}".format(tie_weights))
+        logging.debug("Dropout set to {}".format(args.dropout_rate))
+        logging.debug("Emb Dropout set to {}".format(emb_dropout_rate))
+        logging.debug("Att Dropout set to {}".format(att_dropout_rate))
 
         if tie_weights:
             assert (

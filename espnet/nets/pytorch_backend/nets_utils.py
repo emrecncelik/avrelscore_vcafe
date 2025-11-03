@@ -409,7 +409,7 @@ def get_subsample(train_args, mode, arch):
         # +1 means input (+1) and layers outputs (train_args.elayer)
         subsample = np.ones(train_args.elayers + 1, dtype=np.int)
         logging.warning("Subsampling is not performed for machine translation.")
-        logging.info("subsample: " + " ".join([str(x) for x in subsample]))
+        logging.debug("subsample: " + " ".join([str(x) for x in subsample]))
         return subsample
 
     elif (
@@ -427,7 +427,7 @@ def get_subsample(train_args, mode, arch):
                 "Subsampling is not performed for vgg*. "
                 "It is performed in max pooling layers at CNN."
             )
-        logging.info("subsample: " + " ".join([str(x) for x in subsample]))
+        logging.debug("subsample: " + " ".join([str(x) for x in subsample]))
         return subsample
 
     elif mode == "asr" and arch == "rnn_mix":
@@ -445,7 +445,7 @@ def get_subsample(train_args, mode, arch):
                 "Subsampling is not performed for vgg*. "
                 "It is performed in max pooling layers at CNN."
             )
-        logging.info("subsample: " + " ".join([str(x) for x in subsample]))
+        logging.debug("subsample: " + " ".join([str(x) for x in subsample]))
         return subsample
 
     elif mode == "asr" and arch == "rnn_mulenc":
@@ -464,7 +464,7 @@ def get_subsample(train_args, mode, arch):
                     "It is performed in max pooling layers at CNN.",
                     idx + 1,
                 )
-            logging.info("subsample: " + " ".join([str(x) for x in subsample]))
+            logging.debug("subsample: " + " ".join([str(x) for x in subsample]))
             subsample_list.append(subsample)
         return subsample_list
 

@@ -376,9 +376,9 @@ class RNNLM(nn.Module):
         self.n_units = n_units
         self.typ = typ
 
-        logging.info("Tie weights set to {}".format(tie_weights))
-        logging.info("Dropout set to {}".format(dropout_rate))
-        logging.info("Emb Dropout set to {}".format(emb_dropout_rate))
+        logging.debug("Tie weights set to {}".format(tie_weights))
+        logging.debug("Dropout set to {}".format(dropout_rate))
+        logging.debug("Emb Dropout set to {}".format(emb_dropout_rate))
 
         if tie_weights:
             assert (
