@@ -27,7 +27,11 @@ from espnet.nets.pytorch_backend.transformer.attention import (
     RelPositionMultiHeadedAttention,  # noqa: H301
 )
 from espnet.nets.pytorch_backend.transformer.decoder import Decoder
-from espnet.nets.pytorch_backend.transformer.encoder import Encoder, Encoder_VCAFE, Encoder_AVRelScore
+from espnet.nets.pytorch_backend.transformer.encoder import (
+    Encoder,
+    Encoder_VCAFE,
+    Encoder_AVRelScore,
+)
 from espnet.nets.pytorch_backend.transformer.label_smoothing_loss import (
     LabelSmoothingLoss,  # noqa: H301
 )
@@ -37,22 +41,24 @@ from espnet.nets.scorers.ctc import CTCPrefixScorer
 
 import random
 
+
 class Fusion_module(torch.nn.Module):
     def __init__(self, indim=256):
         super().__init__()
-        self.Linear1 = nn.Linear(indim*2, indim*4)
-        self.BN = nn.BatchNorm1d(indim*4)
-        self.Relu = nn.ReLU(indim*4)
-        self.Linear2 = nn.Linear(indim*4, indim)
+        self.Linear1 = nn.Linear(indim * 2, indim * 4)
+        self.BN = nn.BatchNorm1d(indim * 4)
+        self.Relu = nn.ReLU(indim * 4)
+        self.Linear2 = nn.Linear(indim * 4, indim)
 
     def forward(self, x):
         x = self.Linear1(x)
-        x = x.transpose(1,2).contiguous()
+        x = x.transpose(1, 2).contiguous()
         x = self.BN(x)
         x = self.Relu(x)
-        x = x.transpose(1,2).contiguous()
+        x = x.transpose(1, 2).contiguous()
         x = self.Linear2(x)
         return x
+
 
 class E2E(torch.nn.Module):
     """E2E module.
@@ -208,16 +214,18 @@ class E2E(torch.nn.Module):
             "--dunits", default=320, type=int, help="Number of decoder hidden units"
         )
         # -- pretrain
-        group.add_argument("--pretrain-dataset",
+        group.add_argument(
+            "--pretrain-dataset",
             default="",
             type=str,
-            help='pre-trained dataset for encoder'
+            help="pre-trained dataset for encoder",
         )
         # -- custom name
-        group.add_argument("--custom-pretrain-name",
+        group.add_argument(
+            "--custom-pretrain-name",
             default="",
             type=str,
-            help='pre-trained model for encoder'
+            help="pre-trained model for encoder",
         )
         return parser
 
@@ -226,18 +234,21 @@ class E2E(torch.nn.Module):
         """Return PlotAttentionReport."""
         return PlotAttentionReport
 
-    def __init__(self, odim, args, ignore_id=-1, architecture='AVRelScore'):
+    def __init__(self, odim, args, ignore_id=-1, architecture="AVRelScore"):
         """Construct an E2E object.
         :param int odim: dimension of outputs
         :param Namespace args: argument Namespace containing options
         """
-        assert architecture in ['Conformer', 'VCAFE', 'AVRelScore', 'Audio', 'Video']
+        assert architecture in ["Conformer", "VCAFE", "AVRelScore", "Audio", "Video"]
         torch.nn.Module.__init__(self)
         if args.transformer_attn_dropout_rate is None:
             args.transformer_attn_dropout_rate = args.dropout_rate
         # Check the relative positional encoding type
         self.rel_pos_type = getattr(args, "rel_pos_type", None)
-        if self.rel_pos_type is None and args.transformer_encoder_attn_layer_type == "rel_mha":
+        if (
+            self.rel_pos_type is None
+            and args.transformer_encoder_attn_layer_type == "rel_mha"
+        ):
             args.transformer_encoder_attn_layer_type = "legacy_rel_mha"
             logging.warning(
                 "Using legacy_rel_pos and it will be deprecated in the future."
@@ -245,117 +256,123 @@ class E2E(torch.nn.Module):
 
         idim = 80
         self.architecture = architecture
-        #todo
-        if architecture == 'VCAFE':
-            self.encoders = Encoder_VCAFE(idim=idim,
-                        attention_dim=args.adim,
-                        attention_heads=args.aheads,
-                        linear_units=args.eunits,
-                        num_blocks=args.elayers,
-                        input_layer=args.transformer_input_layer,
-                        dropout_rate=args.dropout_rate,
-                        positional_dropout_rate=args.dropout_rate,
-                        attention_dropout_rate=args.transformer_attn_dropout_rate,
-                        encoder_attn_layer_type=args.transformer_encoder_attn_layer_type,
-                        macaron_style=args.macaron_style,
-                        use_cnn_module=args.use_cnn_module,
-                        cnn_module_kernel=args.cnn_module_kernel,
-                        zero_triu=getattr(args, "zero_triu", False),
-                        a_upsample_ratio=args.a_upsample_ratio,
-                        relu_type=getattr(args, "relu_type", "swish"),
-                    )
-        elif architecture == 'AVRelScore':
-            self.encoders = Encoder_AVRelScore(idim=idim,
-                        attention_dim=args.adim,
-                        attention_heads=args.aheads,
-                        linear_units=args.eunits,
-                        num_blocks=args.elayers,
-                        input_layer=args.transformer_input_layer,
-                        dropout_rate=args.dropout_rate,
-                        positional_dropout_rate=args.dropout_rate,
-                        attention_dropout_rate=args.transformer_attn_dropout_rate,
-                        encoder_attn_layer_type=args.transformer_encoder_attn_layer_type,
-                        macaron_style=args.macaron_style,
-                        use_cnn_module=args.use_cnn_module,
-                        cnn_module_kernel=args.cnn_module_kernel,
-                        zero_triu=getattr(args, "zero_triu", False),
-                        a_upsample_ratio=args.a_upsample_ratio,
-                        relu_type=getattr(args, "relu_type", "swish"),
-                    )
-        elif architecture == 'Conformer':
-            self.encoder_vid = Encoder(idim=idim,
-                        attention_dim=args.adim,
-                        attention_heads=args.aheads,
-                        linear_units=args.eunits,
-                        num_blocks=args.elayers,
-                        input_layer=args.transformer_input_layer,
-                        dropout_rate=args.dropout_rate,
-                        positional_dropout_rate=args.dropout_rate,
-                        attention_dropout_rate=args.transformer_attn_dropout_rate,
-                        encoder_attn_layer_type=args.transformer_encoder_attn_layer_type,
-                        macaron_style=args.macaron_style,
-                        use_cnn_module=args.use_cnn_module,
-                        cnn_module_kernel=args.cnn_module_kernel,
-                        zero_triu=getattr(args, "zero_triu", False),
-                        a_upsample_ratio=args.a_upsample_ratio,
-                        relu_type=getattr(args, "relu_type", "swish"),
-                    )
-            self.encoder_aud = Encoder(idim=idim,
-                        attention_dim=args.adim,
-                        attention_heads=args.aheads,
-                        linear_units=args.eunits,
-                        num_blocks=args.elayers,
-                        input_layer='conv1d',
-                        dropout_rate=args.dropout_rate,
-                        positional_dropout_rate=args.dropout_rate,
-                        attention_dropout_rate=args.transformer_attn_dropout_rate,
-                        encoder_attn_layer_type=args.transformer_encoder_attn_layer_type,
-                        macaron_style=args.macaron_style,
-                        use_cnn_module=args.use_cnn_module,
-                        cnn_module_kernel=args.cnn_module_kernel,
-                        zero_triu=getattr(args, "zero_triu", False),
-                        a_upsample_ratio=args.a_upsample_ratio,
-                        relu_type=getattr(args, "relu_type", "swish"),
-                    )
+        # todo
+        if architecture == "VCAFE":
+            self.encoders = Encoder_VCAFE(
+                idim=idim,
+                attention_dim=args.adim,
+                attention_heads=args.aheads,
+                linear_units=args.eunits,
+                num_blocks=args.elayers,
+                input_layer=args.transformer_input_layer,
+                dropout_rate=args.dropout_rate,
+                positional_dropout_rate=args.dropout_rate,
+                attention_dropout_rate=args.transformer_attn_dropout_rate,
+                encoder_attn_layer_type=args.transformer_encoder_attn_layer_type,
+                macaron_style=args.macaron_style,
+                use_cnn_module=args.use_cnn_module,
+                cnn_module_kernel=args.cnn_module_kernel,
+                zero_triu=getattr(args, "zero_triu", False),
+                a_upsample_ratio=args.a_upsample_ratio,
+                relu_type=getattr(args, "relu_type", "swish"),
+            )
+        elif architecture == "AVRelScore":
+            self.encoders = Encoder_AVRelScore(
+                idim=idim,
+                attention_dim=args.adim,
+                attention_heads=args.aheads,
+                linear_units=args.eunits,
+                num_blocks=args.elayers,
+                input_layer=args.transformer_input_layer,
+                dropout_rate=args.dropout_rate,
+                positional_dropout_rate=args.dropout_rate,
+                attention_dropout_rate=args.transformer_attn_dropout_rate,
+                encoder_attn_layer_type=args.transformer_encoder_attn_layer_type,
+                macaron_style=args.macaron_style,
+                use_cnn_module=args.use_cnn_module,
+                cnn_module_kernel=args.cnn_module_kernel,
+                zero_triu=getattr(args, "zero_triu", False),
+                a_upsample_ratio=args.a_upsample_ratio,
+                relu_type=getattr(args, "relu_type", "swish"),
+            )
+        elif architecture == "Conformer":
+            self.encoder_vid = Encoder(
+                idim=idim,
+                attention_dim=args.adim,
+                attention_heads=args.aheads,
+                linear_units=args.eunits,
+                num_blocks=args.elayers,
+                input_layer=args.transformer_input_layer,
+                dropout_rate=args.dropout_rate,
+                positional_dropout_rate=args.dropout_rate,
+                attention_dropout_rate=args.transformer_attn_dropout_rate,
+                encoder_attn_layer_type=args.transformer_encoder_attn_layer_type,
+                macaron_style=args.macaron_style,
+                use_cnn_module=args.use_cnn_module,
+                cnn_module_kernel=args.cnn_module_kernel,
+                zero_triu=getattr(args, "zero_triu", False),
+                a_upsample_ratio=args.a_upsample_ratio,
+                relu_type=getattr(args, "relu_type", "swish"),
+            )
+            self.encoder_aud = Encoder(
+                idim=idim,
+                attention_dim=args.adim,
+                attention_heads=args.aheads,
+                linear_units=args.eunits,
+                num_blocks=args.elayers,
+                input_layer="conv1d",
+                dropout_rate=args.dropout_rate,
+                positional_dropout_rate=args.dropout_rate,
+                attention_dropout_rate=args.transformer_attn_dropout_rate,
+                encoder_attn_layer_type=args.transformer_encoder_attn_layer_type,
+                macaron_style=args.macaron_style,
+                use_cnn_module=args.use_cnn_module,
+                cnn_module_kernel=args.cnn_module_kernel,
+                zero_triu=getattr(args, "zero_triu", False),
+                a_upsample_ratio=args.a_upsample_ratio,
+                relu_type=getattr(args, "relu_type", "swish"),
+            )
 
             self.fusion_module = Fusion_module(args.adim)
 
-        elif architecture == 'Audio':
-            self.encoder = Encoder(idim=idim,
-                        attention_dim=args.adim,
-                        attention_heads=args.aheads,
-                        linear_units=args.eunits,
-                        num_blocks=args.elayers,
-                        input_layer='conv1d',
-                        dropout_rate=args.dropout_rate,
-                        positional_dropout_rate=args.dropout_rate,
-                        attention_dropout_rate=args.transformer_attn_dropout_rate,
-                        encoder_attn_layer_type=args.transformer_encoder_attn_layer_type,
-                        macaron_style=args.macaron_style,
-                        use_cnn_module=args.use_cnn_module,
-                        cnn_module_kernel=args.cnn_module_kernel,
-                        zero_triu=getattr(args, "zero_triu", False),
-                        a_upsample_ratio=args.a_upsample_ratio,
-                        relu_type=getattr(args, "relu_type", "swish"),
-                    )
-        elif architecture == 'Video':
-            self.encoder = Encoder(idim=idim,
-                        attention_dim=args.adim,
-                        attention_heads=args.aheads,
-                        linear_units=args.eunits,
-                        num_blocks=args.elayers,
-                        input_layer=args.transformer_input_layer,
-                        dropout_rate=args.dropout_rate,
-                        positional_dropout_rate=args.dropout_rate,
-                        attention_dropout_rate=args.transformer_attn_dropout_rate,
-                        encoder_attn_layer_type=args.transformer_encoder_attn_layer_type,
-                        macaron_style=args.macaron_style,
-                        use_cnn_module=args.use_cnn_module,
-                        cnn_module_kernel=args.cnn_module_kernel,
-                        zero_triu=getattr(args, "zero_triu", False),
-                        a_upsample_ratio=args.a_upsample_ratio,
-                        relu_type=getattr(args, "relu_type", "swish"),
-                    )
+        elif architecture == "Audio":
+            self.encoder = Encoder(
+                idim=idim,
+                attention_dim=args.adim,
+                attention_heads=args.aheads,
+                linear_units=args.eunits,
+                num_blocks=args.elayers,
+                input_layer="conv1d",
+                dropout_rate=args.dropout_rate,
+                positional_dropout_rate=args.dropout_rate,
+                attention_dropout_rate=args.transformer_attn_dropout_rate,
+                encoder_attn_layer_type=args.transformer_encoder_attn_layer_type,
+                macaron_style=args.macaron_style,
+                use_cnn_module=args.use_cnn_module,
+                cnn_module_kernel=args.cnn_module_kernel,
+                zero_triu=getattr(args, "zero_triu", False),
+                a_upsample_ratio=args.a_upsample_ratio,
+                relu_type=getattr(args, "relu_type", "swish"),
+            )
+        elif architecture == "Video":
+            self.encoder = Encoder(
+                idim=idim,
+                attention_dim=args.adim,
+                attention_heads=args.aheads,
+                linear_units=args.eunits,
+                num_blocks=args.elayers,
+                input_layer=args.transformer_input_layer,
+                dropout_rate=args.dropout_rate,
+                positional_dropout_rate=args.dropout_rate,
+                attention_dropout_rate=args.transformer_attn_dropout_rate,
+                encoder_attn_layer_type=args.transformer_encoder_attn_layer_type,
+                macaron_style=args.macaron_style,
+                use_cnn_module=args.use_cnn_module,
+                cnn_module_kernel=args.cnn_module_kernel,
+                zero_triu=getattr(args, "zero_triu", False),
+                a_upsample_ratio=args.a_upsample_ratio,
+                relu_type=getattr(args, "relu_type", "swish"),
+            )
 
         self.transformer_input_layer = args.transformer_input_layer
         self.a_upsample_ratio = args.a_upsample_ratio
@@ -423,21 +440,25 @@ class E2E(torch.nn.Module):
         :rtype: float
         """
         # 1. forward encoder
-        xs_pad = xs_pad[:, :max(ilens)]  # for data parallel
+        xs_pad = xs_pad[:, : max(ilens)]  # for data parallel
         src_mask = make_non_pad_mask(ilens.tolist()).to(xs_pad.device).unsqueeze(-2)
 
-        xs_aud_pad = xs_aud_pad[:, :max(ilens_aud)]  # for data parallel
-        src_mask_aud = make_non_pad_mask(ilens_aud.tolist()).to(xs_aud_pad.device).unsqueeze(-2)
+        xs_aud_pad = xs_aud_pad[:, : max(ilens_aud)]  # for data parallel
+        src_mask_aud = (
+            make_non_pad_mask(ilens_aud.tolist()).to(xs_aud_pad.device).unsqueeze(-2)
+        )
 
-        if self.architecture in ['VCAFE', 'AVRelScore']:
-            hs_pad, hs_mask = self.encoders(xs_pad, src_mask, ilens, xs_aud_pad, src_mask_aud)
-        elif self.architecture == 'Conformer':
+        if self.architecture in ["VCAFE", "AVRelScore"]:
+            hs_pad, hs_mask = self.encoders(
+                xs_pad, src_mask, ilens, xs_aud_pad, src_mask_aud
+            )
+        elif self.architecture == "Conformer":
             hs_pad, hs_mask = self.encoder_vid(xs_pad, src_mask)
             hs_pad_aud, _ = self.encoder_aud(xs_aud_pad, src_mask)
             hs_pad = self.fusion_module(torch.cat((hs_pad, hs_pad_aud), dim=-1))
-        elif self.architecture == 'Audio':
+        elif self.architecture == "Audio":
             hs_pad, hs_mask = self.encoder(xs_aud_pad, src_mask_aud)
-        elif self.architecture == 'Video':
+        elif self.architecture == "Video":
             hs_pad, hs_mask = self.encoder(xs_pad, src_mask)
 
         # 2. forward decoder
@@ -498,7 +519,7 @@ class E2E(torch.nn.Module):
             loss_ctc_data = float(loss_ctc)
 
         loss_data = float(self.loss)
-        loss_debug = {'ctc': loss_ctc_data, 'att': loss_att_data, 'att_acc': self.acc}
+        loss_debug = {"ctc": loss_ctc_data, "att": loss_att_data, "att_acc": self.acc}
         return self.loss, loss_debug
 
     def valid(self, xs_pad, xs_aud_pad, ilens, ilens_aud, ys_pad):
@@ -515,23 +536,26 @@ class E2E(torch.nn.Module):
         :rtype: float
         """
         # 1. forward encoder
-        xs_pad = xs_pad[:, :max(ilens)]  # for data parallel
+        xs_pad = xs_pad[:, : max(ilens)]  # for data parallel
         src_mask = make_non_pad_mask(ilens.tolist()).to(xs_pad.device).unsqueeze(-2)
 
-        xs_aud_pad = xs_aud_pad[:, :max(ilens_aud)]  # for data parallel
-        src_mask_aud = make_non_pad_mask(ilens_aud.tolist()).to(xs_aud_pad.device).unsqueeze(-2)
+        xs_aud_pad = xs_aud_pad[:, : max(ilens_aud)]  # for data parallel
+        src_mask_aud = (
+            make_non_pad_mask(ilens_aud.tolist()).to(xs_aud_pad.device).unsqueeze(-2)
+        )
 
-        if self.architecture in ['VCAFE', 'AVRelScore']:
-            hs_pad, hs_mask = self.encoders(xs_pad, src_mask, ilens, xs_aud_pad, src_mask_aud)
-        elif self.architecture == 'Conformer':
+        if self.architecture in ["VCAFE", "AVRelScore"]:
+            hs_pad, hs_mask = self.encoders(
+                xs_pad, src_mask, ilens, xs_aud_pad, src_mask_aud
+            )
+        elif self.architecture == "Conformer":
             hs_pad, hs_mask = self.encoder_vid(xs_pad, src_mask)
             hs_pad_aud, _ = self.encoder_aud(xs_aud_pad, src_mask)
             hs_pad = self.fusion_module(torch.cat((hs_pad, hs_pad_aud), dim=-1))
-        elif self.architecture == 'Audio':
+        elif self.architecture == "Audio":
             hs_pad, hs_mask = self.encoder(xs_aud_pad, src_mask_aud)
-        elif self.architecture == 'Video':
+        elif self.architecture == "Video":
             hs_pad, hs_mask = self.encoder(xs_pad, src_mask)
-
 
         # 2. forward decoder
         if self.decoder is not None:
@@ -540,7 +564,9 @@ class E2E(torch.nn.Module):
             ys_in_pad = torch.ones_like(ys_pad)[:, :1] * self.sos
             for i in range(ys_pad.size(1)):
                 ys_mask = target_mask(ys_in_pad, self.ignore_id)
-                pred_pad, cache = self.decoder.forward_one_step(ys_in_pad, ys_mask, hs_pad, hs_mask, cache)
+                pred_pad, cache = self.decoder.forward_one_step(
+                    ys_in_pad, ys_mask, hs_pad, hs_mask, cache
+                )
                 cur_pred = pred_pad.argmax(-1)
                 pred_pads.append(cur_pred)
                 ys_in_pad = torch.cat([ys_in_pad, cur_pred.unsqueeze(1)], 1)
@@ -560,12 +586,12 @@ class E2E(torch.nn.Module):
         :return: encoder outputs
         :rtype: torch.Tensor
         """
-        self.eval()
+        # self.eval()
         x = torch.as_tensor(x).unsqueeze(0)
         x_a = torch.as_tensor(x_a).unsqueeze(0)
         if x.size(1) * 640 < x_a.size(1):
-            x_a = x_a[:, :x.size(1) * 640, :]
-        
+            x_a = x_a[:, : x.size(1) * 640, :]
+
         if extract_resnet_feats:
             resnet_feats = self.encoder(
                 x,
@@ -574,14 +600,16 @@ class E2E(torch.nn.Module):
             )
             return resnet_feats.squeeze(0)
         else:
-            if self.architecture in ['VCAFE', 'AVRelScore']:
-                enc_output, _ = self.encoders(x, None, torch.tensor([x.size(1)]), x_a, None)
-            elif self.architecture == 'Conformer':
+            if self.architecture in ["VCAFE", "AVRelScore"]:
+                enc_output, _ = self.encoders(
+                    x, None, torch.tensor([x.size(1)]), x_a, None
+                )
+            elif self.architecture == "Conformer":
                 feat_vid, _ = self.encoder_vid(x, None)
                 feat_aud, _ = self.encoder_aud(x_a, None)
                 enc_output = self.fusion_module(torch.cat((feat_vid, feat_aud), dim=-1))
-            elif self.architecture == 'Audio':
+            elif self.architecture == "Audio":
                 enc_output, _ = self.encoder(x_a, None)
-            elif self.architecture == 'Video':
+            elif self.architecture == "Video":
                 enc_output, _ = self.encoder(x, None)
             return enc_output.squeeze(0)
