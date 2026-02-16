@@ -370,7 +370,10 @@ class BeamSearch(torch.nn.Module):
             logging.debug("position " + str(i))
             best = self.search(running_hyps, x)
             # post process of one iteration
-            running_hyps = self.post_process(i, maxlen, maxlenratio, best, ended_hyps)
+            running_hyps = self.post_process(
+                i, maxlen, minlen, maxlenratio, best, ended_hyps
+            )
+
             # end detection
             if maxlenratio == 0.0 and end_detect([h.asdict() for h in ended_hyps], i):
                 logging.debug(f"end detected at {i}")
@@ -415,6 +418,7 @@ class BeamSearch(torch.nn.Module):
         self,
         i: int,
         maxlen: int,
+        minlen: int,
         maxlenratio: float,
         running_hyps: List[Hypothesis],
         ended_hyps: List[Hypothesis],
@@ -456,7 +460,8 @@ class BeamSearch(torch.nn.Module):
                     s = d.final_score(hyp.states[k])
                     hyp.scores[k] += s
                     hyp = hyp._replace(score=hyp.score + self.weights[k] * s)
-                ended_hyps.append(hyp)
+                if i >= minlen:
+                    ended_hyps.append(hyp)
             else:
                 remained_hyps.append(hyp)
         return remained_hyps
